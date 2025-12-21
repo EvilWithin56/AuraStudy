@@ -14,9 +14,9 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
     },
     // CRITICAL: This replaces `process.env.API_KEY` in your code with the actual string value during the build.
-    // It checks VITE_GEMINI_API_KEY first (standard Vite), then API_KEY (Vercel standard), then falls back to empty string.
+    // It checks GEMINI_API_KEY (as documented), then VITE_GEMINI_API_KEY (standard Vite), then API_KEY, then falls back to empty string.
     define: {
-      'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.API_KEY || '')
+      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY || env.API_KEY || '')
     }
   };
 });
