@@ -1,96 +1,170 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <title>AuraStudy | AI-Powered Deep Work Sanctuary</title>
+    <title>AuraStudy | Focus Sanctuary</title>
     
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="AuraStudy is an aesthetic, AI-powered focus sanctuary. Featuring Pomodoro timers, ambient soundscapes, and AI-generated study rituals to help you achieve deep work." />
-    <meta name="keywords" content="study timer, pomodoro, deep work, aesthetic clock, lofi study, AI productivity, focus sanctuary" />
-    <meta name="author" content="AuraStudy" />
-    <link rel="canonical" href="https://aurastudy.app" />
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://aurastudy.app/" />
-    <meta property="og:title" content="AuraStudy | AI-Powered Deep Work Sanctuary" />
-    <meta property="og:description" content="Transform your focus with AI-tuned environments and aesthetic productivity tools." />
-    <meta property="og:image" content="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1200" />
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://aurastudy.app/" />
-    <meta property="twitter:title" content="AuraStudy | AI-Powered Deep Work Sanctuary" />
-    <meta property="twitter:description" content="Transform your focus with AI-tuned environments and aesthetic productivity tools." />
-    <meta property="twitter:image" content="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1200" />
-
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;700;800&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Samsung Sharp Sans', 'sans-serif'],
+              display: ['Samsung Sharp Sans', 'sans-serif'],
+            },
+            borderRadius: {
+              '4xl': '2rem',
+              '5xl': '2.5rem',
+            },
+            colors: {
+              glass: "rgba(255, 255, 255, 0.08)",
+              "glass-hover": "rgba(255, 255, 255, 0.12)",
+            }
+          }
+        }
+      }
+    </script>
+    
+    <link href="https://fonts.cdnfonts.com/css/samsung-sharp-sans" rel="stylesheet">
     
     <style>
       :root {
-        cursor: default;
-        scrollbar-gutter: stable;
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-highlight: rgba(255, 255, 255, 0.05);
       }
+      
       body {
         margin: 0;
         padding: 0;
-        overflow-x: hidden;
-        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-        background-color: #030303;
+        background-color: #050505;
         color: white;
-        scroll-behavior: smooth;
+        font-family: 'Samsung Sharp Sans', sans-serif;
         -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
       }
-      
-      /* Smooth Responsive Scrollbar */
-      ::-webkit-scrollbar {
+
+      /* --- 1. VISUAL REALISM --- */
+
+      /* Film Grain Overlay */
+      .film-grain {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.04;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      }
+
+      /* Premium Glass Panels */
+      .glass-panel {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 
+          0 8px 32px 0 rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 0 rgba(255, 255, 255, 0.15); /* Inner Highlight */
+        border-radius: 32px;
+        transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      .glass-panel:hover {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 
+          0 12px 40px 0 rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+      }
+
+      /* --- 2. ANIMATIONS --- */
+
+      /* Text Gradient Shimmer */
+      .animate-text-shimmer {
+        background-size: 200% auto;
+        animation: textShimmer 6s linear infinite;
+      }
+      @keyframes textShimmer {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+      }
+
+      /* Scroll Reveal */
+      .reveal-hidden {
+        opacity: 0;
+        transform: translateY(40px) scale(0.98);
+        filter: blur(10px);
+        transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .reveal-visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
+
+      /* Spotlight / Glow */
+      .ambient-glow {
+        position: absolute;
+        width: 800px;
+        height: 800px;
+        background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0) 60%);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: -1;
+        border-radius: 50%;
+        filter: blur(80px);
+        animation: pulse-glow 8s ease-in-out infinite alternate;
+      }
+      @keyframes pulse-glow {
+        0% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.9); }
+        100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+      }
+
+      /* Breathing Timer */
+      @keyframes breathe {
+        0%, 100% { transform: scale(1); opacity: 1; text-shadow: 0 0 30px rgba(255,255,255,0.1); }
+        50% { transform: scale(1.02); opacity: 0.9; text-shadow: 0 0 50px rgba(255,255,255,0.3); }
+      }
+      .animate-breathe {
+        animation: breathe 6s ease-in-out infinite;
+      }
+
+      /* Ken Burns (Subtle) */
+      @keyframes ken-burns {
+        0% { transform: scale(1.05); }
+        100% { transform: scale(1.15); }
+      }
+      .animate-ken-burns {
+        animation: ken-burns 120s linear infinite alternate;
+      }
+
+      /* Audio Visualizer Bars */
+      @keyframes bar-dance {
+        0% { height: 20%; }
+        50% { height: 100%; }
+        100% { height: 20%; }
+      }
+      .visualizer-bar {
         width: 4px;
+        background: white;
+        border-radius: 99px;
+        animation: bar-dance 1s ease-in-out infinite;
       }
-      @media (min-width: 768px) {
-        ::-webkit-scrollbar {
-          width: 6px;
-        }
-      }
-      ::-webkit-scrollbar-track {
-        background: #030303;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 100px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.2);
-      }
+      .visualizer-bar:nth-child(1) { animation-duration: 0.8s; animation-delay: 0.1s; }
+      .visualizer-bar:nth-child(2) { animation-duration: 1.2s; animation-delay: 0.2s; }
+      .visualizer-bar:nth-child(3) { animation-duration: 0.7s; animation-delay: 0.0s; }
 
-      /* Inner Custom Scrollbar */
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 3px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 10px;
-      }
-
-      /* Animations */
-      @keyframes bounce-slow {
-        0%, 100% { transform: translateY(-3px); }
-        50% { transform: translateY(3px); }
-      }
-      .animate-bounce-slow {
-        animation: bounce-slow 4s ease-in-out infinite;
-      }
-
-      .perspective-1000 {
-        perspective: 1000px;
-      }
-
-      /* Improved Range Slider for Touch */
+      /* --- 3. UTILITIES --- */
+      .text-glow { text-shadow: 0 0 30px rgba(255,255,255,0.3); }
+      
+      /* One UI Slider Style */
       input[type=range] {
         -webkit-appearance: none;
         background: transparent;
@@ -100,25 +174,27 @@
         height: 24px;
         width: 24px;
         border-radius: 50%;
-        background: #ffffff;
+        background: white;
         cursor: pointer;
         margin-top: -10px;
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
-        transition: transform 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       input[type=range]::-webkit-slider-thumb:active {
         transform: scale(1.2);
       }
-
-      ::selection {
-        background-color: rgba(255,255,255,0.95);
-        color: black;
+      input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 99px;
       }
 
-      /* Mobile Safe Area Padding */
-      .pb-safe {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
     </style>
     
     <script type="importmap">
@@ -135,5 +211,7 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Global Film Grain Overlay -->
+    <div class="film-grain"></div>
   </body>
 </html>
