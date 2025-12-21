@@ -1,6 +1,7 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Initialize AI with the key from process.env as per guidelines
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function fetchMotivationalQuote(): Promise<string> {
@@ -77,5 +78,25 @@ export async function suggestTasks(intent: string): Promise<string[]> {
     return JSON.parse(response.text || "[]");
   } catch (error) {
     return [];
+  }
+}
+
+export async function generateSubtasks(goal: string): Promise<string[]> {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Act as a productivity expert. Break down the user's goal: '${goal}' into 3-5 actionable, concise sub-tasks that can each be completed in 25 minutes (Pomodoro style). Return ONLY a raw JSON array of strings, e.g., ['Task 1', 'Task 2']. No markdown, no extra text.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING }
+        }
+      }
+    });
+    return JSON.parse(response.text || "[]");
+  } catch (error) {
+    console.error("AI Task Breakdown Failed:", error);
+    return [goal]; // Fallback to original
   }
 }

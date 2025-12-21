@@ -4,11 +4,12 @@ import {
   Check, Leaf, BrainCircuit, Home, Layout, 
   Sparkles, Maximize2, Minimize2, Volume2, Settings2, 
   CloudRain, Flame, Trees, Waves, Target, Monitor, ArrowDown,
-  Zap, Clock, Award
+  Zap, Clock, Award, Loader2
 } from 'lucide-react';
 import { TimerMode, Task, TimerSettings } from './types';
 import { AMBIENT_SOUNDS, THEMES, Theme, TIMER_SETTINGS } from './constants';
-import { fetchMotivationalQuote } from './services/gemini';
+import { fetchMotivationalQuote, generateSubtasks } from './services/gemini';
+import ShinyText from './components/ShinyText';
 
 // --- Constants & Config ---
 const DEFAULT_SETTINGS: TimerSettings = {
@@ -71,6 +72,45 @@ const FadeInSection: React.FC<{ children: React.ReactNode; delay?: number; class
     </div>
   );
 };
+
+// --- Progress Visualization Component ---
+const TaskProgressGraph = ({ tasks, accentColor }: { tasks: Task[], accentColor: string }) => {
+  const total = tasks.length;
+  const completedCount = tasks.filter(t => t.completed).length;
+  const percent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+
+  return (
+    <div className="w-full mb-6 md:mb-8 animate-blur-fade">
+      <div className="flex justify-between items-end mb-2 px-1">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Session Velocity</span>
+        <span className="text-xs font-bold text-white font-mono" style={{ textShadow: `0 0 15px ${accentColor}` }}>
+          {total === 0 ? 'READY' : `${completedCount}/${total} • ${percent}%`}
+        </span>
+      </div>
+      
+      <div className="flex w-full h-1.5 gap-1.5 md:gap-2">
+        {total === 0 ? (
+           <div className="w-full h-full rounded-full bg-white/5 border border-white/5" />
+        ) : (
+          Array.from({ length: total }).map((_, i) => {
+            const active = i < completedCount;
+            return (
+              <div 
+                key={i}
+                className={`h-full flex-1 rounded-full transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${active ? 'opacity-100' : 'opacity-20 bg-white'}`}
+                style={{
+                  backgroundColor: active ? accentColor : undefined,
+                  boxShadow: active ? `0 0 12px ${accentColor}, 0 0 4px ${accentColor}` : 'none',
+                  transform: active ? 'scaleY(1.5)' : 'scaleY(1)'
+                }}
+              />
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
 
 // --- Main App Component ---
 const App: React.FC = () => {
@@ -305,6 +345,7 @@ const App: React.FC = () => {
         setTasks={setTasks}
         settings={settings}
         setSettings={setSettings}
+        activeTheme={activeTheme}
       />
 
       {/* Hidden Audio Elements */}
@@ -560,9 +601,12 @@ const AboutSection: React.FC = () => (
     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none transform translate-x-1/2 -translate-y-1/2" />
     <div className="max-w-5xl px-8 py-32 text-center relative z-10">
       <FadeInSection>
-        <h2 className="text-4xl md:text-6xl lg:text-8xl font-bold tracking-tighter mb-8 md:mb-12 text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/40">
-          Flow State<br/>On Demand.
-        </h2>
+        <ShinyText 
+          text="Flow State On Demand." 
+          disabled={false} 
+          speed={3} 
+          className="text-4xl md:text-6xl lg:text-8xl font-bold tracking-tighter mb-8 md:mb-12" 
+        />
       </FadeInSection>
       <FadeInSection delay={200}>
         <p className="text-lg md:text-2xl lg:text-3xl text-white/70 leading-relaxed font-medium max-w-3xl mx-auto">
@@ -719,10 +763,11 @@ const DockButton: React.FC<{ onClick: () => void; isActive: boolean; icon: React
 // 8. Modals Container
 const Modals = ({
   showMixer, setShowMixer, showTasks, setShowTasks, showSettings, setShowSettings,
-  volumes, setVolumes, tasks, setTasks, settings, setSettings
+  volumes, setVolumes, tasks, setTasks, settings, setSettings, activeTheme
 }: any) => {
 
   const [newTaskText, setNewTaskText] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
 
   const getIcon = (iconName: string) => {
     switch (iconName) {
@@ -739,6 +784,27 @@ const Modals = ({
     if (!newTaskText.trim()) return;
     setTasks((prev: any) => [{ id: Math.random().toString(36), text: newTaskText, completed: false, isPriority: false }, ...prev]);
     setNewTaskText("");
+  };
+
+  const handleAiBreakdown = async () => {
+    if (!newTaskText.trim()) return;
+    setIsThinking(true);
+    try {
+      const subtasks = await generateSubtasks(newTaskText);
+      const newTasksObj = subtasks.map(text => ({
+        id: Math.random().toString(36),
+        text,
+        completed: false,
+        isPriority: false,
+        isAnimating: true
+      }));
+      setTasks((prev: any) => [...newTasksObj, ...prev]);
+      setNewTaskText("");
+    } catch (e) {
+      addTask();
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   return (
@@ -786,16 +852,33 @@ const Modals = ({
              </h3>
              <span className="text-[10px] md:text-xs font-bold bg-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-white/60 border border-white/5">{tasks.filter((t:any) => t.completed).length} / {tasks.length}</span>
           </div>
+
+          <TaskProgressGraph tasks={tasks} accentColor={activeTheme.accent} />
           
           <div className="flex gap-2 md:gap-3 mb-6 md:mb-8">
             <input 
               value={newTaskText} 
               onChange={(e) => setNewTaskText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
-              placeholder="Add a new milestone..." 
-              className="flex-1 bg-black/30 border border-white/10 rounded-[20px] md:rounded-[24px] px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm font-semibold text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-black/50 transition-all"
+              onKeyDown={(e) => e.key === 'Enter' && (newTaskText.trim().length > 10 ? handleAiBreakdown() : addTask())}
+              disabled={isThinking}
+              placeholder="Add a goal or AI breakdown..." 
+              className="flex-1 bg-black/30 border border-white/10 rounded-[20px] md:rounded-[24px] px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm font-semibold text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-black/50 transition-all disabled:opacity-50"
             />
-            <button onClick={addTask} className="px-4 md:px-5 bg-white text-black rounded-[20px] md:rounded-[24px] font-bold hover:bg-white/90 transition-colors active:scale-95"><Plus size={20} className="md:w-6 md:h-6"/></button>
+            <button 
+              onClick={handleAiBreakdown}
+              disabled={!newTaskText.trim() || isThinking}
+              className="px-4 md:px-5 bg-gradient-to-r from-amber-200/20 to-purple-200/20 text-amber-200 border border-white/10 rounded-[20px] md:rounded-[24px] font-bold hover:bg-white/10 hover:border-amber-200/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[3rem]"
+              title="Break down with AI"
+            >
+              {isThinking ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles size={20} />}
+            </button>
+            <button 
+              onClick={addTask} 
+              disabled={isThinking}
+              className="px-4 md:px-5 bg-white text-black rounded-[20px] md:rounded-[24px] font-bold hover:bg-white/90 transition-colors active:scale-95 disabled:opacity-50"
+            >
+              <Plus size={20} className="md:w-6 md:h-6"/>
+            </button>
           </div>
 
           <div className="space-y-2 md:space-y-3 max-h-[35vh] md:max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
