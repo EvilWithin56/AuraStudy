@@ -1,0 +1,7 @@
+{
+  "name": "AuraStudy - Aesthetic Focus Clock",
+  "description": "A minimalist, lush forest-themed study clock with Pomodoro timer, study-focused ambient music, and AI-powered motivational quotes.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

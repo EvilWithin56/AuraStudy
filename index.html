@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <title>AuraStudy | AI-Powered Deep Work Sanctuary</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="AuraStudy is an aesthetic, AI-powered focus sanctuary. Featuring Pomodoro timers, ambient soundscapes, and AI-generated study rituals to help you achieve deep work." />
+    <meta name="keywords" content="study timer, pomodoro, deep work, aesthetic clock, lofi study, AI productivity, focus sanctuary" />
+    <meta name="author" content="AuraStudy" />
+    <link rel="canonical" href="https://aurastudy.app" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://aurastudy.app/" />
+    <meta property="og:title" content="AuraStudy | AI-Powered Deep Work Sanctuary" />
+    <meta property="og:description" content="Transform your focus with AI-tuned environments and aesthetic productivity tools." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1200" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://aurastudy.app/" />
+    <meta property="twitter:title" content="AuraStudy | AI-Powered Deep Work Sanctuary" />
+    <meta property="twitter:description" content="Transform your focus with AI-tuned environments and aesthetic productivity tools." />
+    <meta property="twitter:image" content="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1200" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        cursor: default;
+        scrollbar-gutter: stable;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        background-color: #030303;
+        color: white;
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+      }
+      
+      /* Smooth Responsive Scrollbar */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      @media (min-width: 768px) {
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+      }
+      ::-webkit-scrollbar-track {
+        background: #030303;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 100px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      /* Inner Custom Scrollbar */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 3px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+      }
+
+      /* Animations */
+      @keyframes bounce-slow {
+        0%, 100% { transform: translateY(-3px); }
+        50% { transform: translateY(3px); }
+      }
+      .animate-bounce-slow {
+        animation: bounce-slow 4s ease-in-out infinite;
+      }
+
+      .perspective-1000 {
+        perspective: 1000px;
+      }
+
+      /* Improved Range Slider for Touch */
+      input[type=range] {
+        -webkit-appearance: none;
+        background: transparent;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 24px;
+        width: 24px;
+        border-radius: 50%;
+        background: #ffffff;
+        cursor: pointer;
+        margin-top: -10px;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        transition: transform 0.2s ease;
+      }
+      input[type=range]::-webkit-slider-thumb:active {
+        transform: scale(1.2);
+      }
+
+      ::selection {
+        background-color: rgba(255,255,255,0.95);
+        color: black;
+      }
+
+      /* Mobile Safe Area Padding */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+    </style>
+    
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+        "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
