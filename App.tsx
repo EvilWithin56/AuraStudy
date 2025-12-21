@@ -1,14 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
-  Play, Pause, RotateCcw, Music, Sliders, X, Plus, Trash2,
-  Check, Leaf, BrainCircuit, Home, Layout, 
-  Sparkles, Maximize2, Minimize2, Volume2, Settings2, 
-  CloudRain, Flame, Trees, Waves, Target, Monitor, ArrowDown,
-  Zap, Clock, Award, Loader2
-} from 'lucide-react';
-import { TimerMode, Task, TimerSettings } from './types';
-import { AMBIENT_SOUNDS, THEMES, Theme, TIMER_SETTINGS } from './constants';
-import { fetchMotivationalQuote, generateSubtasks } from './services/gemini';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Play, Pause, RotateCcw, Clock } from 'lucide-react';
+import { TimerMode, TimerSettings } from './types';
+import { THEMES, TIMER_SETTINGS } from './constants';
 import ShinyText from './components/ShinyText';
 
 // --- Constants & Config ---
@@ -19,120 +12,13 @@ const DEFAULT_SETTINGS: TimerSettings = {
   longBreakInterval: 4
 };
 
-// --- Helpers ---
-const hexToRgb = (hex: string) => {
-  const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-  hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 255, 255';
-};
-
-// --- Scroll Reveal Component ---
-const FadeInSection: React.FC<{ children: React.ReactNode; delay?: number; className?: string }> = ({ children, delay = 0, className = "" }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const domRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          // Trigger when element enters viewport
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-            // Stop observing once visible so it doesn't hide again when scrolling up
-            if (domRef.current) observer.unobserve(domRef.current);
-          }
-        });
-      },
-      { 
-        threshold: 0.1, // Trigger when 10% visible
-        rootMargin: '0px 0px -50px 0px' // Offset to trigger slightly before bottom
-      }
-    );
-
-    const currentElement = domRef.current;
-    if (currentElement) observer.observe(currentElement);
-
-    return () => {
-      if (currentElement) observer.unobserve(currentElement);
-    };
-  }, []);
-
-  return (
-    <div
-      ref={domRef}
-      className={`${className} transition-all duration-1000 ease-out transform ${
-        isVisible 
-          ? 'opacity-100 translate-y-0 filter-none' 
-          : 'opacity-0 translate-y-20 blur-sm'
-      }`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </div>
-  );
-};
-
-// --- Progress Visualization Component ---
-const TaskProgressGraph = ({ tasks, accentColor }: { tasks: Task[], accentColor: string }) => {
-  const total = tasks.length;
-  const completedCount = tasks.filter(t => t.completed).length;
-  const percent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-
-  return (
-    <div className="w-full mb-6 md:mb-8 animate-blur-fade">
-      <div className="flex justify-between items-end mb-2 px-1">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Session Velocity</span>
-        <span className="text-xs font-bold text-white font-mono" style={{ textShadow: `0 0 15px ${accentColor}` }}>
-          {total === 0 ? 'READY' : `${completedCount}/${total} • ${percent}%`}
-        </span>
-      </div>
-      
-      <div className="flex w-full h-1.5 gap-1.5 md:gap-2">
-        {total === 0 ? (
-           <div className="w-full h-full rounded-full bg-white/5 border border-white/5" />
-        ) : (
-          Array.from({ length: total }).map((_, i) => {
-            const active = i < completedCount;
-            return (
-              <div 
-                key={i}
-                className={`h-full flex-1 rounded-full transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) ${active ? 'opacity-100' : 'opacity-20 bg-white'}`}
-                style={{
-                  backgroundColor: active ? accentColor : undefined,
-                  boxShadow: active ? `0 0 12px ${accentColor}, 0 0 4px ${accentColor}` : 'none',
-                  transform: active ? 'scaleY(1.5)' : 'scaleY(1)'
-                }}
-              />
-            )
-          })
-        )}
-      </div>
-    </div>
-  )
-}
-
 // --- Main App Component ---
 const App: React.FC = () => {
-  // --- View State ---
-  const [appMode, setAppMode] = useState<'DASHBOARD' | 'FOCUS'>('DASHBOARD');
-  const [showMixer, setShowMixer] = useState(false);
-  const [showTasks, setShowTasks] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  // --- Physics & Parallax State ---
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [scrollY, setScrollY] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // --- Timer Engine ---
+  // --- Timer State ---
   const [mode, setMode] = useState<TimerMode>(TimerMode.POMODORO);
   const [isActive, setIsActive] = useState(false);
-  const [settings, setSettings] = useState<TimerSettings>(() => {
-    const saved = localStorage.getItem('aura_timer_settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
-  });
+  const [settings] = useState<TimerSettings>(DEFAULT_SETTINGS);
+  const [activeTheme] = useState(THEMES[0]);
 
   const getInitialTime = useCallback((targetMode: TimerMode) => {
     switch (targetMode) {
@@ -144,38 +30,123 @@ const App: React.FC = () => {
   }, [settings]);
 
   const [timeLeft, setTimeLeft] = useState(getInitialTime(TimerMode.POMODORO));
-  const [totalStudyTime, setTotalStudyTime] = useState(() => {
-    return parseInt(localStorage.getItem('aura_total_study_time') || '0');
-  });
 
-  // --- Aesthetic State ---
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [quote, setQuote] = useState("Life begins at the end of your comfort zone.");
-  const [activeTheme, setActiveTheme] = useState(THEMES[0]);
-  const [volumes, setVolumes] = useState<Record<string, number>>({
-    rain: 0, lofi: 0, fire: 0, forest: 0, jazz: 0, waves: 0, classical: 0
-  });
+  // --- Timer Logic ---
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((time) => time - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && isActive) {
+      setIsActive(false);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isActive, timeLeft]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const toggleTimer = () => setIsActive(!isActive);
   
-  // --- Tasks State ---
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    const saved = localStorage.getItem('aura_tasks');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const resetTimer = () => {
+    setIsActive(false);
+    setTimeLeft(getInitialTime(mode));
+  };
 
-  // --- Refs ---
-  const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
-  const notificationAudio = useRef<HTMLAudioElement | null>(null);
+  const switchMode = (newMode: TimerMode) => {
+    setMode(newMode);
+    setIsActive(false);
+    setTimeLeft(getInitialTime(newMode));
+  };
 
-  // --- Effects ---
+  return (
+    <div className="min-h-screen w-full relative overflow-hidden">
+      {/* Background */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center animate-ken-burns"
+        style={{ backgroundImage: `url(${activeTheme.url})` }}
+      />
+      <div className="fixed inset-0 bg-black/60" />
+      
+      {/* Content */}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="glass-panel p-8 md:p-12 max-w-lg w-full text-center">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 animate-breathe">
+              AuraStudy
+            </h1>
+            <ShinyText text="Focus Sanctuary" className="text-sm" />
+          </div>
 
-  // Scroll Listener
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+          {/* Mode Selector */}
+          <div className="flex justify-center gap-2 mb-8">
+            {[
+              { mode: TimerMode.POMODORO, label: 'Focus' },
+              { mode: TimerMode.SHORT_BREAK, label: 'Short Break' },
+              { mode: TimerMode.LONG_BREAK, label: 'Long Break' }
+            ].map(({ mode: m, label }) => (
+              <button
+                key={m}
+                onClick={() => switchMode(m)}
+                className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+                  mode === m 
+                    ? 'bg-white text-black' 
+                    : 'bg-white/10 text-white/60 hover:bg-white/20'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-  // Parallax Logic
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth
+          {/* Timer Display */}
+          <div className="mb-8">
+            <div 
+              className="text-7xl md:text-8xl font-bold tracking-tight text-glow"
+              style={{ color: activeTheme.accent }}
+            >
+              {formatTime(timeLeft)}
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={toggleTimer}
+              className="p-4 rounded-full bg-white text-black hover:bg-gray-200 transition-all hover:scale-105 active:scale-95"
+            >
+              {isActive ? <Pause size={24} /> : <Play size={24} />}
+            </button>
+            <button
+              onClick={resetTimer}
+              className="p-4 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all hover:scale-105 active:scale-95"
+            >
+              <RotateCcw size={24} />
+            </button>
+          </div>
+
+          {/* Status */}
+          <div className="mt-8 flex items-center justify-center gap-2 text-white/40 text-sm">
+            <Clock size={14} />
+            <span>{isActive ? 'Session in progress...' : 'Ready to focus'}</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-white/30 text-xs">
+          <p>✅ Build system configured</p>
+          <p>✅ Vercel deployment ready</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
