@@ -42,7 +42,7 @@
         color: white;
         font-family: 'Samsung Sharp Sans', sans-serif;
         -webkit-font-smoothing: antialiased;
-        overflow-x: hidden;
+        overflow-x: hidden; /* Prevent horizontal scroll only */
       }
 
       /* --- 1. VISUAL REALISM --- */
@@ -92,6 +92,15 @@
       @keyframes textShimmer {
         0% { background-position: 0% 50%; }
         100% { background-position: 200% 50%; }
+      }
+
+      /* Scale Up Fade Entry */
+      @keyframes scale-up-fade {
+        0% { opacity: 0; transform: scale(0.9); filter: blur(10px); }
+        100% { opacity: 1; transform: scale(1); filter: blur(0); }
+      }
+      .animate-scale-up {
+        animation: scale-up-fade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
 
       /* Scroll Reveal */

@@ -18,6 +18,7 @@ export interface Task {
   text: string;
   completed: boolean;
   isPriority: boolean;
+  isAnimating?: boolean;
 }
 
 export interface StudySession {
