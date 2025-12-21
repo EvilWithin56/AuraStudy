@@ -208,8 +208,12 @@ const App: React.FC = () => {
   // Quotes & Audio Init
   useEffect(() => {
     fetchMotivationalQuote().then(setQuote);
-    notificationAudio.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    notificationAudio.current.volume = 0.5;
+    try {
+      notificationAudio.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      notificationAudio.current.volume = 0.5;
+    } catch (e) {
+      console.warn("Audio initialization failed:", e);
+    }
   }, []);
 
   // Format Helper
@@ -249,16 +253,22 @@ const App: React.FC = () => {
       if (notificationAudio.current) {
         notificationAudio.current.loop = true;
         notificationAudio.current.currentTime = 0;
-        notificationAudio.current.play().catch(e => console.log("Audio play failed", e));
+        notificationAudio.current.play().catch(e => {
+          console.log("Auto-play prevented. User interaction required.", e);
+        });
       }
 
       // Browser Notification
       if ("Notification" in window) {
         if (Notification.permission === "granted") {
-           new Notification("AuraStudy: Timer Finished", { 
-             body: "Great focus session! Take a moment to breathe.",
-             requireInteraction: true 
-           });
+           try {
+             new Notification("AuraStudy: Timer Finished", { 
+               body: "Great focus session! Take a moment to breathe.",
+               requireInteraction: true 
+             });
+           } catch (e) {
+             console.error("Notification failed", e);
+           }
         }
       }
       
@@ -300,8 +310,12 @@ const App: React.FC = () => {
       const audio = audioRefs.current[id];
       if (audio) {
         audio.volume = volumes[id];
-        if (volumes[id] > 0 && audio.paused) audio.play().catch(() => {});
-        else if (volumes[id] === 0 && !audio.paused) audio.pause();
+        if (volumes[id] > 0 && audio.paused) {
+           audio.play().catch(e => console.log(`Audio play failed for ${id}:`, e));
+        }
+        else if (volumes[id] === 0 && !audio.paused) {
+           audio.pause();
+        }
       }
     });
   }, [volumes]);
@@ -317,7 +331,7 @@ const App: React.FC = () => {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
+      document.documentElement.requestFullscreen().catch(e => console.log("Fullscreen failed", e));
       setIsFullscreen(true);
     } else {
       if (document.exitFullscreen) {
@@ -343,7 +357,7 @@ const App: React.FC = () => {
   const toggleTimer = () => {
     if (!isActive && timeLeft > 0) {
         if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
+            Notification.requestPermission().catch(e => console.log("Notification permission failed", e));
         }
         setIsActive(true);
     } else if (isActive) {
@@ -708,7 +722,8 @@ const HeroSection: React.FC<HeroProps> = ({
       </div>
 
       {/* --- LAYER 1: INTERFACE ELEMENTS (Foreground) --- */}
-      <div className="relative z-10 w-full h-full max-w-7xl flex flex-col items-center justify-between pt-24 pb-32 md:pt-32 md:pb-40 pointer-events-none px-4">
+      {/* Changed Z-index from 10 to 30 to stay above particles/background */}
+      <div className="relative z-30 w-full h-full max-w-7xl flex flex-col items-center justify-between pt-24 pb-32 md:pt-32 md:pb-40 pointer-events-none px-4">
         
         {/* TOP AREA */}
         <div className="pointer-events-auto">
@@ -872,9 +887,15 @@ const FeaturesSection: React.FC = () => (
 );
 
 // 6. Floating Controls
-const FloatingControls = ({ showMixer, setShowMixer, volumes }: any) => {
+interface FloatingControlsProps {
+  showMixer: boolean;
+  setShowMixer: (v: boolean) => void;
+  volumes: Record<string, number>;
+}
+
+const FloatingControls: React.FC<FloatingControlsProps> = ({ showMixer, setShowMixer, volumes }) => {
   // Calculate if any sound is active for visual indicator
-  const isAudioActive = Object.values(volumes).some((v: any) => v > 0);
+  const isAudioActive = Object.values(volumes).some((v) => v > 0);
 
   return (
     <div className="fixed bottom-32 right-6 md:bottom-12 md:right-12 z-40 flex flex-col gap-4">
@@ -900,7 +921,20 @@ const FloatingControls = ({ showMixer, setShowMixer, volumes }: any) => {
 };
 
 // 7. Dock
-const Dock = ({ activeView, setView, toggleTasks, toggleSettings, toggleHistory, toggleFullscreen, isFullscreen, showTasks, showSettings, showHistory }: any) => {
+interface DockProps {
+  activeView: string;
+  setView: (v: 'DASHBOARD' | 'FOCUS') => void;
+  toggleTasks: () => void;
+  toggleSettings: () => void;
+  toggleHistory: () => void;
+  toggleFullscreen: () => void;
+  isFullscreen: boolean;
+  showTasks: boolean;
+  showSettings: boolean;
+  showHistory: boolean;
+}
+
+const Dock: React.FC<DockProps> = ({ activeView, setView, toggleTasks, toggleSettings, toggleHistory, toggleFullscreen, isFullscreen, showTasks, showSettings, showHistory }) => {
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-3 p-2 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 shadow-2xl">
       <DockItem 
@@ -929,7 +963,7 @@ const Dock = ({ activeView, setView, toggleTasks, toggleSettings, toggleHistory,
   );
 };
 
-const DockItem = ({ icon, label, isActive, onClick }: any) => (
+const DockItem = ({ icon, label, isActive, onClick }: { icon: React.ReactNode, label: string, isActive?: boolean, onClick: () => void }) => (
   <button
     onClick={onClick}
     className={`relative group p-3 rounded-full transition-all duration-300 ${
@@ -967,12 +1001,35 @@ const ModalWrapper = ({ isOpen, onClose, title, children }: { isOpen: boolean; o
   );
 };
 
-const Modals = ({ showMixer, setShowMixer, showTasks, setShowTasks, showSettings, setShowSettings, showHistory, setShowHistory, volumes, setVolumes, tasks, setTasks, settings, onSaveSettings, activeTheme, history, totalStudyTime }: any) => {
+interface ModalsProps {
+  showMixer: boolean;
+  setShowMixer: (v: boolean) => void;
+  showTasks: boolean;
+  setShowTasks: (v: boolean) => void;
+  showSettings: boolean;
+  setShowSettings: (v: boolean) => void;
+  showHistory: boolean;
+  setShowHistory: (v: boolean) => void;
+  volumes: Record<string, number>;
+  setVolumes: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  settings: TimerSettings;
+  onSaveSettings: (s: TimerSettings) => void;
+  activeTheme: Theme;
+  history: StudySession[];
+  totalStudyTime: number;
+}
+
+const Modals: React.FC<ModalsProps> = ({ 
+  showMixer, setShowMixer, showTasks, setShowTasks, showSettings, setShowSettings, showHistory, setShowHistory, 
+  volumes, setVolumes, tasks, setTasks, settings, onSaveSettings, activeTheme, history, totalStudyTime 
+}) => {
   const [newTaskInput, setNewTaskInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleVolumeChange = (id: string, val: number) => {
-    setVolumes((prev: any) => ({ ...prev, [id]: val }));
+    setVolumes((prev) => ({ ...prev, [id]: val }));
   };
 
   const addTask = () => {
@@ -992,7 +1049,7 @@ const Modals = ({ showMixer, setShowMixer, showTasks, setShowTasks, showSettings
     setIsGenerating(true);
     try {
       const subtasks = await generateSubtasks(newTaskInput);
-      const newTasks = subtasks.map((st, i) => ({
+      const newTasks: Task[] = subtasks.map((st, i) => ({
         id: `${Date.now()}-${i}`,
         text: st,
         completed: false,
@@ -1027,7 +1084,6 @@ const Modals = ({ showMixer, setShowMixer, showTasks, setShowTasks, showSettings
             {AMBIENT_SOUNDS.map(sound => (
               <div key={sound.id} className="flex items-center gap-4">
                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${volumes[sound.id] > 0 ? 'bg-white text-black' : 'bg-white/5 text-white/40'}`}>
-                    {/* Icons mapping could be improved but simple fallback for now */}
                     <Music size={18} />
                  </div>
                  <div className="flex-1">

@@ -1,8 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize AI with the key from process.env as per guidelines
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// Helper to clean AI response text (removes markdown code blocks)
+const cleanJson = (text: string | undefined): string => {
+  if (!text) return "[]";
+  // Remove ```json, ```, and trim whitespace
+  return text.replace(/```json/g, '').replace(/```/g, '').trim();
+};
 
 export async function fetchMotivationalQuote(): Promise<string> {
   try {
@@ -51,13 +57,18 @@ export async function suggestSmartAura(prompt: string): Promise<{ themeId: strin
         }
       }
     });
-    const result = JSON.parse(response.text || "{}");
+    
+    // Robust parsing
+    const cleanText = response.text ? response.text.replace(/```json/g, '').replace(/```/g, '').trim() : "{}";
+    const result = JSON.parse(cleanText);
+    
     return {
       themeId: result.themeId || 'forest',
       soundId: result.soundId || 'lofi',
       reasoning: result.reasoning || 'Standard focus setup.'
     };
   } catch (error) {
+    console.warn("Smart Aura fallback used due to error:", error);
     return { themeId: 'forest', soundId: 'lofi', reasoning: 'Falling back to default focus aura.' };
   }
 }
@@ -75,7 +86,7 @@ export async function suggestTasks(intent: string): Promise<string[]> {
         }
       }
     });
-    return JSON.parse(response.text || "[]");
+    return JSON.parse(cleanJson(response.text));
   } catch (error) {
     return [];
   }
@@ -94,7 +105,7 @@ export async function generateSubtasks(goal: string): Promise<string[]> {
         }
       }
     });
-    return JSON.parse(response.text || "[]");
+    return JSON.parse(cleanJson(response.text));
   } catch (error) {
     console.error("AI Task Breakdown Failed:", error);
     return [goal]; // Fallback to original
