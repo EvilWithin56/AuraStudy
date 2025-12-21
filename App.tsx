@@ -205,7 +205,7 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Quotes
+  // Quotes & Audio Init
   useEffect(() => {
     fetchMotivationalQuote().then(setQuote);
     notificationAudio.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
@@ -218,6 +218,14 @@ const App: React.FC = () => {
     const s = seconds % 60;
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
+
+  // Stop Alarm Helper
+  const stopAlarm = useCallback(() => {
+    if (notificationAudio.current) {
+      notificationAudio.current.pause();
+      notificationAudio.current.currentTime = 0;
+    }
+  }, []);
 
   // Timer Logic
   useEffect(() => {
@@ -237,10 +245,21 @@ const App: React.FC = () => {
       // Timer Finished Logic
       setIsActive(false);
       
-      // Trigger Sound
+      // Trigger Sound (Looping)
       if (notificationAudio.current) {
+        notificationAudio.current.loop = true;
         notificationAudio.current.currentTime = 0;
         notificationAudio.current.play().catch(e => console.log("Audio play failed", e));
+      }
+
+      // Browser Notification
+      if ("Notification" in window) {
+        if (Notification.permission === "granted") {
+           new Notification("AuraStudy: Timer Finished", { 
+             body: "Great focus session! Take a moment to breathe.",
+             requireInteraction: true 
+           });
+        }
       }
       
       // Save Session to History
@@ -309,14 +328,29 @@ const App: React.FC = () => {
   };
 
   const handleRefresh = () => {
+    stopAlarm();
     setIsActive(false);
     setTimeLeft(getInitialTime(mode));
   };
 
   const handleModeSwitch = (newMode: TimerMode) => {
+    stopAlarm();
     setMode(newMode);
     setIsActive(false);
     setTimeLeft(getInitialTime(newMode));
+  };
+
+  const toggleTimer = () => {
+    if (!isActive && timeLeft > 0) {
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+        setIsActive(true);
+    } else if (isActive) {
+        setIsActive(false);
+    } else if (timeLeft === 0) {
+        handleRefresh();
+    }
   };
 
   const getStatusText = () => {
@@ -378,13 +412,13 @@ const App: React.FC = () => {
           animation: ripple-expand 2s ease-out infinite;
         }
 
-        @keyframes particle-rise {
-          0% { transform: rotate(var(--angle)) translateY(0) scale(0); opacity: 0; }
-          20% { opacity: 1; transform: rotate(var(--angle)) translateY(-20px) scale(1); }
-          100% { transform: rotate(var(--angle)) translateY(calc(var(--dist) * -1)) scale(0.5); opacity: 0; }
+        @keyframes bubble-rise {
+          0% { transform: translateY(0) scale(0.5); opacity: 0; }
+          20% { opacity: 0.8; }
+          100% { transform: translateY(-200px) scale(1.2); opacity: 0; }
         }
-        .animate-particle-rise {
-          animation: particle-rise 2s ease-out infinite;
+        .animate-bubble-rise {
+          animation: bubble-rise ease-out infinite;
         }
       `}</style>
 
@@ -400,10 +434,9 @@ const App: React.FC = () => {
           totalStudyTime={totalStudyTime}
           timeLeft={timeLeft}
           isActive={isActive}
-          setIsActive={setIsActive}
-          mode={mode}
-          setMode={setMode}
+          toggleTimer={toggleTimer}
           handleRefresh={handleRefresh}
+          mode={mode}
           handleModeSwitch={handleModeSwitch}
           getStatusText={getStatusText}
           mousePos={mousePos}
@@ -555,10 +588,9 @@ interface HeroProps {
   totalStudyTime: number;
   timeLeft: number;
   isActive: boolean;
-  setIsActive: (val: boolean) => void;
-  mode: TimerMode;
-  setMode: (m: TimerMode) => void;
+  toggleTimer: () => void;
   handleRefresh: () => void;
+  mode: TimerMode;
   handleModeSwitch: (m: TimerMode) => void;
   getStatusText: () => string;
   mousePos: {x:number, y:number};
@@ -568,7 +600,7 @@ interface HeroProps {
 
 const HeroSection: React.FC<HeroProps> = ({ 
   appMode, currentTime, quote, totalStudyTime, 
-  timeLeft, isActive, setIsActive, mode, setMode, handleRefresh, handleModeSwitch, getStatusText, mousePos, scrollY, formatTimer 
+  timeLeft, isActive, toggleTimer, handleRefresh, mode, handleModeSwitch, getStatusText, mousePos, scrollY, formatTimer 
 }) => {
   
   const getGreeting = (hour: number) => {
@@ -604,7 +636,7 @@ const HeroSection: React.FC<HeroProps> = ({
         ) : (
            <div 
               className="group cursor-pointer transition-all duration-500 relative flex items-center justify-center" 
-              onClick={() => timeLeft > 0 ? setIsActive(!isActive) : handleRefresh()}
+              onClick={toggleTimer}
            >
               {/* Visual State Indicator Ring */}
               <div 
@@ -622,23 +654,30 @@ const HeroSection: React.FC<HeroProps> = ({
                 className={`absolute inset-0 -m-8 md:-m-16 rounded-full dashed-circle transition-all duration-1000 pointer-events-none ${isActive ? 'rotate-180 scale-105 opacity-40' : 'opacity-10'} ${isFinished ? 'opacity-0' : ''}`}
               />
 
-              {/* CELEBRATION PARTICLES */}
+              {/* CELEBRATION PARTICLES (CHAMPAGNE BUBBLES) */}
               {isFinished && (
-                <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-0 pointer-events-none overflow-visible">
+                  {/* Main shockwave */}
                   <div className="absolute inset-0 -m-20 rounded-full border-2 border-amber-400/30 animate-ripple-expand" />
                   <div className="absolute inset-0 -m-20 rounded-full border border-amber-400/10 animate-ripple-expand" style={{ animationDelay: '0.3s' }} />
-                  {/* Floating particles */}
-                  {[...Array(12)].map((_, i) => (
+                  
+                  {/* Champagne Bubbles Container - Centered */}
+                  <div className="absolute top-1/2 left-1/2 w-40 h-40 -translate-x-1/2 -translate-y-1/2">
+                    {[...Array(20)].map((_, i) => (
                       <div 
                         key={i}
-                        className="absolute top-1/2 left-1/2 w-2 h-2 bg-amber-300 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-particle-rise"
+                        className="absolute bg-amber-300 rounded-full mix-blend-screen opacity-0 animate-bubble-rise shadow-[0_0_8px_rgba(251,191,36,0.8)]"
                         style={{
-                           '--angle': `${i * 30}deg`,
-                           '--dist': `${150 + Math.random() * 50}px`,
-                           animationDelay: `${Math.random() * 0.5}s`
-                        } as React.CSSProperties}
+                           left: `${Math.random() * 100}%`,
+                           bottom: '10%', 
+                           width: `${4 + Math.random() * 8}px`,
+                           height: `${4 + Math.random() * 8}px`,
+                           animationDuration: `${1.5 + Math.random() * 1.5}s`,
+                           animationDelay: `${Math.random() * 1}s`
+                        }}
                       />
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -659,8 +698,8 @@ const HeroSection: React.FC<HeroProps> = ({
               )}
                {/* Finished Hint */}
                {isFinished && (
-                <div className="absolute bottom-[-60px] left-0 right-0 text-center animate-bounce">
-                    <span className="text-amber-400 font-bold uppercase tracking-widest text-sm md:text-lg">Session Complete</span>
+                <div className="absolute bottom-[-60px] left-0 right-0 text-center animate-bounce z-20">
+                    <span className="text-amber-400 font-bold uppercase tracking-widest text-sm md:text-lg drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">Session Complete</span>
                 </div>
               )}
            </div>
@@ -733,7 +772,7 @@ const HeroSection: React.FC<HeroProps> = ({
              </FadeInSection>
            ) : (
              // Focus Active Controls
-             <FadeInSection delay={300} className="flex flex-col items-center gap-6">
+             <div className="flex flex-col items-center gap-6 animate-scale-up">
                {isActive ? (
                   <div 
                     className="px-6 py-2 md:px-8 md:py-3 rounded-full backdrop-blur-md shadow-2xl animate-pulse mb-2 md:mb-4 border"
@@ -749,21 +788,33 @@ const HeroSection: React.FC<HeroProps> = ({
                      </span>
                   </div>
                ) : (
-                  <div className={`px-6 py-2 md:px-8 md:py-3 rounded-full border backdrop-blur-md mb-2 md:mb-4 ${timeLeft === 0 && mode !== TimerMode.STOPWATCH ? 'bg-amber-500/20 border-amber-500/50' : 'bg-white/5 border-white/10'}`}>
-                     <span className={`font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs ${timeLeft === 0 && mode !== TimerMode.STOPWATCH ? 'text-amber-400' : 'text-white/50'}`}>
-                        {timeLeft === 0 && mode !== TimerMode.STOPWATCH ? 'Great Job!' : getStatusText()}
-                     </span>
-                  </div>
+                  !isFinished && (
+                    <div className="px-6 py-2 md:px-8 md:py-3 rounded-full border backdrop-blur-md mb-2 md:mb-4 bg-white/5 border-white/10">
+                      <span className="font-bold tracking-[0.2em] uppercase text-[10px] md:text-xs text-white/50">
+                          {getStatusText()}
+                      </span>
+                    </div>
+                  )
                )}
                
-               <button
-                  onClick={handleRefresh}
-                  className={`p-3 md:p-4 rounded-full border transition-all duration-300 backdrop-blur-md group active:scale-90 ${timeLeft === 0 && mode !== TimerMode.STOPWATCH ? 'bg-amber-500/20 border-amber-500/50 text-amber-200 hover:bg-amber-500/30' : 'bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/10'}`}
-                  aria-label="Reset Timer"
-               >
-                  <RotateCcw size={18} className={`md:w-5 md:h-5 transition-transform duration-500 group-hover:rotate-180 ${timeLeft === 0 && mode !== TimerMode.STOPWATCH ? 'animate-spin-slow' : ''}`} />
-               </button>
-             </FadeInSection>
+               {isFinished ? (
+                 <button
+                    onClick={handleRefresh}
+                    className="px-8 py-4 rounded-full bg-amber-500 text-black font-bold text-lg shadow-[0_0_40px_rgba(251,191,36,0.6)] hover:scale-105 transition-all animate-pulse active:scale-95"
+                    aria-label="Stop Alarm"
+                 >
+                    STOP ALARM
+                 </button>
+               ) : (
+                 <button
+                    onClick={handleRefresh}
+                    className="p-3 md:p-4 rounded-full border transition-all duration-300 backdrop-blur-md group active:scale-90 bg-white/5 border-white/5 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/10"
+                    aria-label="Reset Timer"
+                 >
+                    <RotateCcw size={18} className="md:w-5 md:h-5 transition-transform duration-500 group-hover:rotate-180" />
+                 </button>
+               )}
+             </div>
            )}
         </div>
       </div>
@@ -782,533 +833,338 @@ const HeroSection: React.FC<HeroProps> = ({
 
 // 4. About Section
 const AboutSection: React.FC = () => (
-  <section className="min-h-[70vh] w-full flex items-center justify-center bg-black/40 backdrop-blur-md border-t border-white/5 relative z-20 overflow-hidden">
-    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none transform translate-x-1/2 -translate-y-1/2" />
-    <div className="max-w-5xl px-8 py-32 text-center relative z-10">
-      <FadeInSection>
-        <ShinyText 
-          text="Flow State On Demand." 
-          disabled={false} 
-          speed={3} 
-          className="text-4xl md:text-6xl lg:text-8xl font-bold tracking-tighter mb-8 md:mb-12" 
-        />
-      </FadeInSection>
-      <FadeInSection delay={200}>
-        <p className="text-lg md:text-2xl lg:text-3xl text-white/70 leading-relaxed font-medium max-w-3xl mx-auto">
-          AuraStudy isn't just a clock; it's a <span className="text-white font-bold border-b border-white/20 pb-1">sensory environment</span> designed to trigger deep focus. 
-          With spatial audio soundscapes, circadian lighting adaptation, and intelligent rhythm tracking.
+  <section className="w-full py-24 md:py-32 px-6 flex flex-col items-center justify-center relative z-10 bg-black/50 backdrop-blur-sm">
+    <FadeInSection>
+      <div className="max-w-3xl text-center space-y-8">
+        <h2 className="text-3xl md:text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/40">
+          Focus. Flow. Flourish.
+        </h2>
+        <p className="text-lg md:text-xl text-white/60 leading-relaxed font-light">
+          AuraStudy combines scientifically-proven productivity techniques with immersive, AI-generated atmospheres to help you achieve deep work states effortlessly.
         </p>
-      </FadeInSection>
-    </div>
+      </div>
+    </FadeInSection>
   </section>
 );
 
 // 5. Features Section
 const FeaturesSection: React.FC = () => (
-  <section className="min-h-screen w-full bg-black/60 backdrop-blur-xl px-4 md:px-8 py-32 flex flex-col items-center relative z-20">
-    <div className="max-w-6xl w-full">
-      <FadeInSection className="mb-16 text-center">
-        <h3 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Crafted for Focus</h3>
-        <p className="text-white/50 text-base md:text-lg">Every detail designed to keep you in the zone.</p>
-      </FadeInSection>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
-          <FadeInSection>
-            <FeatureCard 
-              icon={<BrainCircuit size={32} className="text-purple-300" />}
-              title="Neural Entrainment"
-              desc="Binaural beats layered under nature sounds to align your brainwaves for peak cognitive performance."
-              color="purple"
-              large
-            />
-          </FadeInSection>
-        </div>
-
-        <FadeInSection delay={100}>
-          <FeatureCard 
-            icon={<Sparkles size={32} className="text-amber-300" />}
-            title="AI Motivation"
-            desc="Dynamic quotes and coaching tips tailored to your current patterns."
-            color="amber"
-          />
-        </FadeInSection>
-
-        <FadeInSection delay={200}>
-          <FeatureCard 
-            icon={<CloudRain size={32} className="text-blue-300" />}
-            title="Dynamic Atmospheres"
-            desc="From Kyoto Zen Gardens to Cyberpunk Cities—immersive visual themes."
-            color="blue"
-          />
-        </FadeInSection>
-
-        <div className="md:col-span-2">
-          <FadeInSection delay={300}>
-              <FeatureCard 
-              icon={<Target size={32} className="text-emerald-300" />}
-              title="Smart Analytics"
-              desc="Track your flow cycles without the clutter. Just pure, actionable insights on your productivity."
-              color="emerald"
-              large
-            />
-          </FadeInSection>
-        </div>
-      </div>
-      
-      <FadeInSection delay={400} className="mt-20 md:mt-40 text-center pb-32 md:pb-48">
-        <h3 className="text-3xl md:text-5xl font-bold mb-8">Ready to dive in?</h3>
-        <button 
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="px-8 py-4 md:px-12 md:py-5 bg-white text-black rounded-[32px] font-bold text-lg md:text-xl hover:bg-white/90 hover:scale-105 transition-all active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.3)]"
-        >
-          Start Focusing Now
-        </button>
-      </FadeInSection>
+  <section className="w-full py-24 px-6 relative z-10 bg-black/80">
+    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+       {/* Feature Cards using FadeInSection */}
+       <FadeInSection delay={100} className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-lg">
+          <BrainCircuit className="w-10 h-10 text-emerald-400 mb-6" />
+          <h3 className="text-xl font-bold text-white mb-3">AI Guidance</h3>
+          <p className="text-white/50">Intelligent task breakdowns and ritual suggestions powered by Gemini.</p>
+       </FadeInSection>
+       <FadeInSection delay={200} className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-lg">
+          <Sparkles className="w-10 h-10 text-amber-400 mb-6" />
+          <h3 className="text-xl font-bold text-white mb-3">Immersive Ambience</h3>
+          <p className="text-white/50">Curated soundscapes and dynamic themes that adapt to your focus needs.</p>
+       </FadeInSection>
+       <FadeInSection delay={300} className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-lg">
+          <History className="w-10 h-10 text-cyan-400 mb-6" />
+          <h3 className="text-xl font-bold text-white mb-3">Session Tracking</h3>
+          <p className="text-white/50">Visualize your productivity velocity and build a consistent habit.</p>
+       </FadeInSection>
     </div>
   </section>
 );
 
-const FeatureCard: React.FC<{ icon: React.ReactNode, title: string, desc: string, color?: string, large?: boolean }> = ({ icon, title, desc, color = "white", large = false }) => (
-  <div className={`glass-panel p-6 md:p-10 h-full transition-all duration-500 hover:scale-[1.02] group relative overflow-hidden flex flex-col ${large ? 'justify-end' : ''}`}>
-    <div className={`absolute inset-0 bg-gradient-to-br from-${color}-500/0 to-${color}-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 group-hover:from-${color}-500/20 group-hover:to-transparent`} />
-    <div className={`mb-4 md:mb-6 p-3 md:p-4 rounded-[20px] bg-white/5 w-fit border border-white/5 group-hover:border-white/20 transition-all duration-500 group-hover:scale-110 group-hover:bg-${color}-500/20`}>
-      {icon}
-    </div>
-    <h3 className="text-2xl md:text-3xl font-bold mb-2 md:mb-3 tracking-tight group-hover:translate-x-1 transition-transform">{title}</h3>
-    <p className="text-white/60 leading-relaxed font-medium text-base md:text-lg group-hover:text-white/80 transition-colors">{desc}</p>
-  </div>
-);
-
 // 6. Floating Controls
-const FloatingControls = ({ showMixer, setShowMixer, volumes }: { showMixer: boolean, setShowMixer: (v:boolean)=>void, volumes: Record<string,number> }) => {
-  const isAudioPlaying = Object.values(volumes).some(v => v > 0);
+const FloatingControls = ({ showMixer, setShowMixer, volumes }: any) => {
+  // Calculate if any sound is active for visual indicator
+  const isAudioActive = Object.values(volumes).some((v: any) => v > 0);
+
   return (
-    <div className="fixed bottom-4 left-4 md:bottom-10 md:left-10 z-50 flex items-end gap-3 md:gap-5 pointer-events-auto">
-      <button 
+    <div className="fixed bottom-32 right-6 md:bottom-12 md:right-12 z-40 flex flex-col gap-4">
+      <button
         onClick={() => setShowMixer(!showMixer)}
-        className={`relative w-14 h-14 md:w-20 md:h-20 rounded-full flex items-center justify-center glass-panel transition-all duration-300 active:scale-90 group overflow-hidden ${showMixer ? 'bg-white text-black border-transparent' : 'hover:bg-white/10'}`}
+        className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center backdrop-blur-xl border shadow-2xl transition-all duration-300 group ${
+          showMixer || isAudioActive ? 'bg-white text-black border-white' : 'bg-black/40 text-white border-white/10 hover:bg-white/10'
+        }`}
       >
-        <Music size={20} className={`md:w-7 md:h-7 transition-all duration-300 ${showMixer ? 'scale-110' : 'opacity-80'}`} />
-      </button>
-      {isAudioPlaying && (
-        <div className="flex items-end gap-1 h-8 md:h-10 pb-2 md:pb-4 opacity-90 drop-shadow-lg">
-          <div className="visualizer-bar h-full shadow-lg"></div>
-          <div className="visualizer-bar h-full shadow-lg"></div>
-          <div className="visualizer-bar h-full shadow-lg"></div>
-          <div className="visualizer-bar h-full shadow-lg"></div>
+        <div className="relative">
+           <Volume2 size={20} className={isAudioActive && !showMixer ? 'animate-pulse' : ''} />
+           {isAudioActive && (
+             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-lg" />
+           )}
         </div>
-      )}
+        {/* Label on hover */}
+        <span className="absolute right-full mr-4 px-3 py-1 rounded-full bg-black/80 border border-white/10 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          Sound Mixer
+        </span>
+      </button>
     </div>
   );
 };
 
 // 7. Dock
-const Dock: React.FC<{ 
-  activeView: string;
-  setView: (v: 'DASHBOARD' | 'FOCUS') => void;
-  toggleTasks: () => void;
-  toggleSettings: () => void;
-  toggleHistory: () => void;
-  toggleFullscreen: () => void;
-  isFullscreen: boolean;
-  showTasks: boolean;
-  showSettings: boolean;
-  showHistory: boolean;
-}> = ({ activeView, setView, toggleTasks, toggleSettings, toggleHistory, toggleFullscreen, isFullscreen, showTasks, showSettings, showHistory }) => {
+const Dock = ({ activeView, setView, toggleTasks, toggleSettings, toggleHistory, toggleFullscreen, isFullscreen, showTasks, showSettings, showHistory }: any) => {
   return (
-    <div className="fixed bottom-4 md:bottom-10 left-0 right-0 z-50 flex justify-center pointer-events-auto">
-      <div 
-        className="glass-panel px-4 py-3 md:px-6 md:py-4 rounded-[32px] md:rounded-[40px] flex items-center gap-2 md:gap-4 transition-all duration-300 border border-white/10 shadow-2xl backdrop-blur-2xl bg-black/20 scale-[0.85] md:scale-100 origin-bottom"
-      >
-        <DockButton onClick={() => { setView('DASHBOARD'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} isActive={activeView === 'DASHBOARD'} icon={<Home size={26} />} label="Home" />
-        <DockButton onClick={() => { setView('FOCUS'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} isActive={activeView === 'FOCUS'} icon={<Monitor size={26} />} label="Focus" />
-        <div className="w-[1px] h-8 md:h-10 bg-white/10 mx-1 md:mx-2 self-center" />
-        <DockButton onClick={toggleTasks} isActive={showTasks} icon={<Layout size={26} />} label="Tasks" />
-        <DockButton onClick={toggleHistory} isActive={showHistory} icon={<History size={26} />} label="History" />
-        <DockButton onClick={toggleSettings} isActive={showSettings} icon={<Settings2 size={26} />} label="Settings" />
-        <DockButton onClick={toggleFullscreen} isActive={isFullscreen} icon={isFullscreen ? <Minimize2 size={26} /> : <Maximize2 size={26} />} label="Screen" />
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-3 p-2 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 shadow-2xl">
+      <DockItem 
+        icon={<Home size={20} />} 
+        label="Dashboard" 
+        isActive={activeView === 'DASHBOARD'} 
+        onClick={() => setView('DASHBOARD')} 
+      />
+      <DockItem 
+        icon={<Target size={20} />} 
+        label="Focus Mode" 
+        isActive={activeView === 'FOCUS'} 
+        onClick={() => setView('FOCUS')} 
+      />
+      <div className="w-px h-8 bg-white/10 mx-1 md:mx-2" />
+      <DockItem icon={<Check size={20} />} label="Tasks" isActive={showTasks} onClick={toggleTasks} />
+      <DockItem icon={<Settings2 size={20} />} label="Settings" isActive={showSettings} onClick={toggleSettings} />
+      <DockItem icon={<History size={20} />} label="History" isActive={showHistory} onClick={toggleHistory} />
+      <div className="w-px h-8 bg-white/10 mx-1 md:mx-2" />
+      <DockItem 
+        icon={isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />} 
+        label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"} 
+        onClick={toggleFullscreen} 
+      />
+    </div>
+  );
+};
+
+const DockItem = ({ icon, label, isActive, onClick }: any) => (
+  <button
+    onClick={onClick}
+    className={`relative group p-3 rounded-full transition-all duration-300 ${
+      isActive ? 'bg-white text-black shadow-lg scale-110' : 'text-white/60 hover:text-white hover:bg-white/10'
+    }`}
+  >
+    {icon}
+    {/* Tooltip */}
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 rounded-lg bg-black/90 border border-white/10 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-white opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all pointer-events-none whitespace-nowrap">
+      {label}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90" />
+    </div>
+  </button>
+);
+
+// 8. Modals Wrapper
+const ModalWrapper = ({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-scale-up flex flex-col max-h-[85vh]">
+         <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
+            <h3 className="text-xl font-bold text-white tracking-tight">{title}</h3>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors">
+              <X size={20} />
+            </button>
+         </div>
+         <div className="overflow-y-auto p-6 custom-scrollbar">
+            {children}
+         </div>
       </div>
     </div>
   );
 };
 
-const DockButton: React.FC<{ onClick: () => void; isActive: boolean; icon: React.ReactNode; label: string }> = ({ onClick, isActive, icon, label }) => (
-  <div className="flex flex-col items-center gap-1 group">
-    <button 
-      onClick={onClick}
-      className={`w-12 h-12 md:w-16 md:h-16 rounded-[18px] md:rounded-[22px] flex items-center justify-center transition-all duration-300 active:scale-90 relative overflow-hidden ${isActive ? 'shadow-lg scale-105' : 'bg-transparent text-white/50 hover:bg-white/10 hover:text-white'}`}
-      style={isActive ? { backgroundColor: 'var(--theme-accent)', color: '#000' } : {}}
-    >
-      <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 rounded-[22px]" />
-      <div className="relative z-10">
-        {React.cloneElement(icon as React.ReactElement<any>, { size: 24, className: "md:w-7 md:h-7 w-5 h-5" })}
-      </div>
-    </button>
-  </div>
-);
+const Modals = ({ showMixer, setShowMixer, showTasks, setShowTasks, showSettings, setShowSettings, showHistory, setShowHistory, volumes, setVolumes, tasks, setTasks, settings, onSaveSettings, activeTheme, history, totalStudyTime }: any) => {
+  const [newTaskInput, setNewTaskInput] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
-// 8. Modals Container
-const Modals = ({
-  showMixer, setShowMixer, showTasks, setShowTasks, showSettings, setShowSettings, showHistory, setShowHistory,
-  volumes, setVolumes, tasks, setTasks, settings, onSaveSettings, activeTheme, history, totalStudyTime
-}: any) => {
-
-  const [newTaskText, setNewTaskText] = useState("");
-  const [isThinking, setIsThinking] = useState(false);
-
-  const getIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'CloudRain': return <CloudRain size={20} />;
-      case 'Flame': return <Flame size={20} />;
-      case 'Trees': return <Trees size={20} />;
-      case 'Waves': return <Waves size={20} />;
-      case 'Music': return <Music size={20} />;
-      default: return <Volume2 size={20} />;
-    }
+  const handleVolumeChange = (id: string, val: number) => {
+    setVolumes((prev: any) => ({ ...prev, [id]: val }));
   };
 
   const addTask = () => {
-    if (!newTaskText.trim()) return;
-    setTasks((prev: any) => [{ id: Math.random().toString(36), text: newTaskText, completed: false, isPriority: false, isAnimating: true }, ...prev]);
-    setNewTaskText("");
+    if (!newTaskInput.trim()) return;
+    const newTask: Task = {
+      id: Date.now().toString(),
+      text: newTaskInput,
+      completed: false,
+      isPriority: false
+    };
+    setTasks([newTask, ...tasks]);
+    setNewTaskInput("");
   };
 
-  const togglePriority = (id: string) => {
-    setTasks((prev: any) => prev.map((t: any) => t.id === id ? { ...t, isPriority: !t.isPriority } : t));
-  };
-
-  const handleDelete = (id: string) => {
-    // Mark as deleting to trigger exit animation
-    setTasks((prev: any[]) => prev.map((t: any) => t.id === id ? { ...t, isDeleting: true } : t));
-    
-    // Actually remove after animation finishes
-    setTimeout(() => {
-      setTasks((prev: any[]) => prev.filter((t: any) => t.id !== id));
-    }, 400);
-  };
-
-  const handleAiBreakdown = async () => {
-    if (!newTaskText.trim()) return;
-    setIsThinking(true);
+  const generateAI = async () => {
+    if (!newTaskInput.trim()) return;
+    setIsGenerating(true);
     try {
-      const subtasks = await generateSubtasks(newTaskText);
-      const newTasksObj = subtasks.map(text => ({
-        id: Math.random().toString(36),
-        text,
+      const subtasks = await generateSubtasks(newTaskInput);
+      const newTasks = subtasks.map((st, i) => ({
+        id: `${Date.now()}-${i}`,
+        text: st,
         completed: false,
-        isPriority: false,
-        isAnimating: true
+        isPriority: false
       }));
-      setTasks((prev: any) => [...newTasksObj, ...prev]);
-      setNewTaskText("");
+      setTasks([...newTasks, ...tasks]);
+      setNewTaskInput("");
     } catch (e) {
-      addTask();
+      console.error(e);
     } finally {
-      setIsThinking(false);
+      setIsGenerating(false);
     }
   };
 
-  return (
-    <>
-      {showMixer && (
-        <div className="fixed bottom-24 md:bottom-36 left-4 md:left-10 z-50 w-[90vw] max-w-sm md:w-96 glass-panel p-6 md:p-8 animate-blur-fade origin-bottom-left shadow-2xl">
-          <div className="flex justify-between items-center mb-6 md:mb-8">
-            <h3 className="font-bold text-xl md:text-2xl tracking-tight text-white flex items-center gap-3">
-              <Music size={24} className="text-white/50"/>
-              Soundscape
-            </h3>
-            <button onClick={() => setVolumes({ rain: 0, lofi: 0, fire: 0, forest: 0, jazz: 0, waves: 0, classical: 0 })} className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-white/50 hover:text-white transition-colors bg-white/5 px-3 py-1.5 md:px-4 md:py-2 rounded-full hover:bg-white/10">Silence</button>
-          </div>
-          <div className="space-y-4 md:space-y-6 max-h-[40vh] md:max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
-            {AMBIENT_SOUNDS.map(sound => (
-              <div key={sound.id} className="group">
-                <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-3">
-                  <div 
-                    className={`p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-colors shadow-lg ${volumes[sound.id] > 0 ? '' : 'bg-white/5 text-white/50 group-hover:bg-white/10 group-hover:text-white'}`}
-                    style={volumes[sound.id] > 0 ? { backgroundColor: 'var(--theme-accent)', color: '#000' } : {}}
-                  >
-                    {getIcon(sound.icon)}
-                  </div>
-                  <span className="text-sm font-semibold tracking-wide text-white/90 flex-1">{sound.name}</span>
-                  <span className="text-xs font-bold font-mono text-white/40 w-8 text-right">{(volumes[sound.id] * 100).toFixed(0)}%</span>
-                </div>
-                <input 
-                  type="range" min="0" max="1" step="0.05"
-                  value={volumes[sound.id]}
-                  onChange={(e) => setVolumes({...volumes, [sound.id]: parseFloat(e.target.value)})}
-                  className="w-full"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {showTasks && (
-        <div className="fixed bottom-24 md:bottom-40 right-1/2 translate-x-1/2 z-50 w-[90vw] max-w-md md:w-[460px] glass-panel p-6 md:p-8 animate-blur-fade origin-bottom shadow-2xl border-white/20">
-          <div className="flex justify-between items-center mb-6 md:mb-8">
-             <h3 className="font-bold text-xl md:text-2xl tracking-tight text-white flex items-center gap-3">
-               <Target size={24} className="text-white/50"/>
-               Goals
-             </h3>
-             <span className="text-[10px] md:text-xs font-bold bg-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-white/60 border border-white/5">{tasks.filter((t:any) => t.completed).length} / {tasks.length}</span>
-          </div>
-
-          <TaskProgressGraph tasks={tasks} accentColor={activeTheme.accent} />
-          
-          <div className="flex gap-2 md:gap-3 mb-6 md:mb-8">
-            <input 
-              value={newTaskText} 
-              onChange={(e) => setNewTaskText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && (newTaskText.trim().length > 10 ? handleAiBreakdown() : addTask())}
-              disabled={isThinking}
-              placeholder="Add a goal or AI breakdown..." 
-              className="flex-1 bg-black/30 border border-white/10 rounded-[20px] md:rounded-[24px] px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm font-semibold text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-black/50 transition-all disabled:opacity-50"
-            />
-            <button 
-              onClick={handleAiBreakdown}
-              disabled={!newTaskText.trim() || isThinking}
-              className="px-4 md:px-5 bg-gradient-to-r from-amber-200/20 to-purple-200/20 text-amber-200 border border-white/10 rounded-[20px] md:rounded-[24px] font-bold hover:bg-white/10 hover:border-amber-200/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[3rem]"
-              title="Break down with AI"
-            >
-              {isThinking ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles size={20} />}
-            </button>
-            <button 
-              onClick={addTask} 
-              disabled={isThinking}
-              className="px-4 md:px-5 bg-white text-black rounded-[20px] md:rounded-[24px] font-bold hover:bg-white/90 transition-colors active:scale-95 disabled:opacity-50"
-            >
-              <Plus size={20} className="md:w-6 md:h-6"/>
-            </button>
-          </div>
-
-          <div className="space-y-2 md:space-y-3 max-h-[35vh] md:max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
-             {tasks.length === 0 && <p className="text-center text-white/30 text-xs md:text-sm py-8 md:py-12 font-medium bg-white/5 rounded-[24px] border border-white/5">No goals set. Start by adding one above.</p>}
-             {tasks.map((task: any) => (
-                <div 
-                    key={task.id} 
-                    className={`group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-[20px] md:rounded-[24px] border hover:border-white/20 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.98] cursor-pointer
-                        ${task.isDeleting ? 'opacity-0 -translate-x-full scale-90 overflow-hidden !h-0 !p-0 !m-0 border-0' : 'opacity-100 translate-x-0'}
-                        ${task.isAnimating ? 'animate-scale-up' : ''}
-                        ${task.isPriority ? 'bg-amber-500/10 border-amber-500/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}
-                    `} 
-                    style={task.isDeleting ? { transitionProperty: 'all', transitionDuration: '0.4s' } : {}}
-                    onClick={() => setTasks((prev:any) => prev.map((t:any) => t.id === task.id ? { ...t, completed: !t.completed } : t))}
-                >
-                  <div 
-                    className={`w-6 h-6 md:w-7 md:h-7 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${task.completed ? 'scale-110 shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'border-white/30 text-transparent hover:border-white'}`}
-                    style={task.completed ? { backgroundColor: 'var(--theme-accent)', borderColor: 'var(--theme-accent)', boxShadow: '0 0 15px rgba(var(--theme-accent-rgb), 0.4)' } : {}}
-                  >
-                    <Check size={14} strokeWidth={4} className={`text-black md:w-4 md:h-4 transition-transform duration-300 ${task.completed ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} />
-                  </div>
-                  <span className={`flex-1 text-xs md:text-sm font-semibold transition-all duration-500 ${task.completed ? 'text-white/30 line-through decoration-white/30' : 'text-white/90'}`}>{task.text}</span>
-                  
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); togglePriority(task.id); }} 
-                    className={`p-2 rounded-full transition-all duration-300 hover:bg-white/10 ${task.isPriority ? 'text-amber-400 scale-110' : 'text-white/20 hover:text-amber-200'}`}
-                    title="Toggle Priority"
-                  >
-                    <Star size={16} fill={task.isPriority ? "currentColor" : "none"} className="md:w-5 md:h-5" />
-                  </button>
-
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} 
-                    className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 hover:bg-red-500/10 hover:scale-110 transition-all duration-300 p-2 rounded-full"
-                  >
-                    <Trash2 size={14} className="md:w-4 md:h-4"/>
-                  </button>
-                </div>
-             ))}
-          </div>
-        </div>
-      )}
-
-      <HistoryModal 
-        show={showHistory}
-        onClose={() => setShowHistory(false)}
-        history={history}
-        totalStudyTime={totalStudyTime}
-        activeTheme={activeTheme}
-      />
-
-      <SettingsModal 
-        show={showSettings} 
-        onClose={() => setShowSettings(false)}
-        settings={settings}
-        onSave={onSaveSettings}
-        activeTheme={activeTheme}
-      />
-    </>
-  );
-};
-
-const HistoryModal = ({ show, onClose, history, totalStudyTime, activeTheme }: any) => {
-  if (!show) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 pointer-events-auto">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      
-      <div className="glass-panel w-full max-w-lg p-6 md:p-8 relative z-10 animate-scale-up shadow-2xl border-white/20">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="font-bold text-2xl tracking-tight text-white flex items-center gap-3">
-            <CalendarClock size={24} className="text-white/50" />
-            Session History
-          </h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-            <X size={20} className="text-white/50" />
-          </button>
-        </div>
-
-        {/* Stats Header */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-           <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-white mb-1">{history.length}</span>
-              <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Total Sessions</span>
-           </div>
-           <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-white mb-1">{formatTotalTime(totalStudyTime)}</span>
-              <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Total Focus</span>
-           </div>
-        </div>
-
-        <div className="space-y-3 max-h-[40vh] md:max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
-           {history.length === 0 && (
-             <div className="text-center py-12 text-white/30 flex flex-col items-center gap-3">
-                <History size={32} className="opacity-50" />
-                <p className="text-sm">No sessions completed yet.</p>
-             </div>
-           )}
-           {history.map((session: StudySession, idx: number) => (
-             <div key={idx} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center bg-white/10"
-                    style={{ color: session.mode === TimerMode.POMODORO ? activeTheme.accent : 'white' }}
-                  >
-                     {session.mode === TimerMode.POMODORO ? <Zap size={18} /> : <Check size={18} />}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-white">{session.mode === TimerMode.POMODORO ? 'Deep Focus' : 'Break'}</span>
-                    <span className="text-xs text-white/40">{new Date(session.timestamp).toLocaleDateString()} • {new Date(session.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </div>
-                </div>
-                <span className="font-mono font-bold text-white/80">{Math.floor(session.duration / 60)} min</span>
-             </div>
-           ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SettingsModal = ({ show, onClose, settings, onSave, activeTheme }: any) => {
-  const [localSettings, setLocalSettings] = useState(settings);
-
-  // Reset local state when modal opens
-  useEffect(() => {
-    if (show) setLocalSettings(settings);
-  }, [show, settings]);
-
-  if (!show) return null;
-
-  const handleChange = (key: keyof TimerSettings, value: number) => {
-    setLocalSettings((prev: TimerSettings) => ({ ...prev, [key]: value }));
+  const toggleTask = (id: string) => {
+    setTasks(tasks.map((t: Task) => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
+  const deleteTask = (id: string) => {
+    setTasks(tasks.filter((t: Task) => t.id !== id));
+  };
+
+  // Settings State
+  const [localSettings, setLocalSettings] = useState(settings);
+  useEffect(() => { setLocalSettings(settings) }, [settings]);
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 pointer-events-auto">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      
-      <div className="glass-panel w-full max-w-md p-6 md:p-8 relative z-10 animate-scale-up shadow-2xl border-white/20">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="font-bold text-2xl tracking-tight text-white flex items-center gap-3">
-            <Settings2 size={24} className="text-white/50" />
-            Configuration
-          </h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-            <X size={20} className="text-white/50" />
-          </button>
-        </div>
+    <>
+      {/* MIXER MODAL */}
+      <ModalWrapper isOpen={showMixer} onClose={() => setShowMixer(false)} title="Soundscape Mixer">
+         <div className="space-y-6">
+            {AMBIENT_SOUNDS.map(sound => (
+              <div key={sound.id} className="flex items-center gap-4">
+                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${volumes[sound.id] > 0 ? 'bg-white text-black' : 'bg-white/5 text-white/40'}`}>
+                    {/* Icons mapping could be improved but simple fallback for now */}
+                    <Music size={18} />
+                 </div>
+                 <div className="flex-1">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm font-medium text-white">{sound.name}</span>
+                      <span className="text-xs text-white/40">{Math.round(volumes[sound.id] * 100)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.01" 
+                      value={volumes[sound.id]} 
+                      onChange={(e) => handleVolumeChange(sound.id, parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer hover:bg-white/20 transition-all"
+                    />
+                 </div>
+              </div>
+            ))}
+         </div>
+      </ModalWrapper>
 
-        <div className="space-y-8">
-          {/* Pomodoro */}
-          <div className="group">
-            <div className="flex justify-between items-end mb-3">
-              <label className="text-sm font-bold text-white/60 group-hover:text-white transition-colors">Focus Duration</label>
-              <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-white">{localSettings.pomodoro} min</span>
-            </div>
+      {/* TASKS MODAL */}
+      <ModalWrapper isOpen={showTasks} onClose={() => setShowTasks(false)} title="Deep Work Tasks">
+         <TaskProgressGraph tasks={tasks} accentColor={activeTheme.accent} />
+         
+         <div className="flex gap-2 mb-6">
             <input 
-              type="range" min="1" max="90" step="1"
-              value={localSettings.pomodoro} 
-              onChange={(e) => handleChange('pomodoro', parseInt(e.target.value))} 
-              className="w-full"
+              type="text" 
+              value={newTaskInput}
+              onChange={(e) => setNewTaskInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addTask()}
+              placeholder="What's your goal?" 
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-all placeholder:text-white/20"
             />
-          </div>
+            <button onClick={addTask} className="p-3 rounded-xl bg-white text-black hover:bg-gray-200 transition-colors">
+              <Plus size={20} />
+            </button>
+         </div>
+         
+         <button 
+           onClick={generateAI} 
+           disabled={isGenerating || !newTaskInput.trim()}
+           className="w-full mb-6 py-3 rounded-xl border border-white/10 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-all"
+         >
+            {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            AI Breakdown
+         </button>
 
-          {/* Short Break */}
-          <div className="group">
-            <div className="flex justify-between items-end mb-3">
-              <label className="text-sm font-bold text-white/60 group-hover:text-white transition-colors">Short Break</label>
-              <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-white">{localSettings.shortBreak} min</span>
+         <div className="space-y-2">
+            {tasks.length === 0 ? (
+               <div className="text-center py-8 text-white/20 text-sm">No active tasks.</div>
+            ) : (
+               tasks.map((task: Task) => (
+                 <div key={task.id} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all">
+                    <button 
+                      onClick={() => toggleTask(task.id)}
+                      className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-white/20 hover:border-white/40'}`}
+                    >
+                      {task.completed && <Check size={12} className="text-black" />}
+                    </button>
+                    <span className={`flex-1 text-sm ${task.completed ? 'text-white/30 line-through' : 'text-white/80'}`}>{task.text}</span>
+                    <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 transition-all p-1">
+                      <Trash2 size={16} />
+                    </button>
+                 </div>
+               ))
+            )}
+         </div>
+      </ModalWrapper>
+
+      {/* SETTINGS MODAL */}
+       <ModalWrapper isOpen={showSettings} onClose={() => setShowSettings(false)} title="Timer Configuration">
+         <div className="space-y-6">
+            <div className="space-y-4">
+               {[
+                 { label: 'Pomodoro (min)', key: 'pomodoro', min: 1, max: 90 },
+                 { label: 'Short Break (min)', key: 'shortBreak', min: 1, max: 30 },
+                 { label: 'Long Break (min)', key: 'longBreak', min: 1, max: 60 }
+               ].map(setting => (
+                 <div key={setting.key} className="flex justify-between items-center">
+                    <label className="text-sm text-white/60">{setting.label}</label>
+                    <div className="flex items-center gap-4">
+                       <span className="text-sm font-mono w-8 text-right">{(localSettings as any)[setting.key]}</span>
+                       <input 
+                         type="range" 
+                         min={setting.min} 
+                         max={setting.max} 
+                         value={(localSettings as any)[setting.key]}
+                         onChange={(e) => setLocalSettings({ ...localSettings, [setting.key]: parseInt(e.target.value) })}
+                         className="w-32 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer hover:bg-white/20"
+                       />
+                    </div>
+                 </div>
+               ))}
             </div>
-            <input 
-              type="range" min="2" max="15" step="1"
-              value={localSettings.shortBreak} 
-              onChange={(e) => handleChange('shortBreak', parseInt(e.target.value))} 
-              className="w-full"
-            />
-          </div>
-
-          {/* Long Break */}
-          <div className="group">
-            <div className="flex justify-between items-end mb-3">
-              <label className="text-sm font-bold text-white/60 group-hover:text-white transition-colors">Long Break</label>
-              <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-white">{localSettings.longBreak} min</span>
+            <div className="pt-4 border-t border-white/5 flex justify-end">
+               <button 
+                 onClick={() => onSaveSettings(localSettings)}
+                 className="px-6 py-2 rounded-full bg-white text-black font-bold text-sm hover:scale-105 active:scale-95 transition-all"
+               >
+                 Save Changes
+               </button>
             </div>
-            <input 
-              type="range" min="10" max="45" step="5"
-              value={localSettings.longBreak} 
-              onChange={(e) => handleChange('longBreak', parseInt(e.target.value))} 
-              className="w-full"
-            />
-          </div>
+         </div>
+       </ModalWrapper>
 
-          {/* Long Break Interval */}
-          <div className="group">
-             <div className="flex justify-between items-end mb-3">
-              <label className="text-sm font-bold text-white/60 group-hover:text-white transition-colors">Long Break Interval</label>
-              <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-white">{localSettings.longBreakInterval} sessions</span>
-            </div>
-            <input 
-              type="range" min="2" max="8" step="1"
-              value={localSettings.longBreakInterval} 
-              onChange={(e) => handleChange('longBreakInterval', parseInt(e.target.value))} 
-              className="w-full"
-            />
-             <p className="text-[10px] text-white/30 mt-2">Number of focus sessions before a long break.</p>
+       {/* HISTORY MODAL */}
+       <ModalWrapper isOpen={showHistory} onClose={() => setShowHistory(false)} title="Session History">
+          <div className="space-y-2">
+             {history.length === 0 ? (
+               <div className="text-center py-10 text-white/30">
+                  <CalendarClock size={32} className="mx-auto mb-3 opacity-50" />
+                  <p>No completed sessions yet.</p>
+               </div>
+             ) : (
+               history.map((session: StudySession, i: number) => (
+                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                          <Check size={14} />
+                       </div>
+                       <div>
+                          <p className="text-sm font-medium text-white">{session.mode}</p>
+                          <p className="text-xs text-white/40">{new Date(session.timestamp).toLocaleDateString()} • {new Date(session.timestamp).toLocaleTimeString()}</p>
+                       </div>
+                    </div>
+                    <span className="font-mono text-sm text-white/60">
+                      {Math.floor(session.duration / 60)}m
+                    </span>
+                 </div>
+               ))
+             )}
           </div>
-        </div>
-
-        <div className="mt-10 grid grid-cols-2 gap-4">
-          <button 
-            onClick={onClose}
-            className="py-3.5 rounded-2xl font-bold text-sm bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={() => onSave(localSettings)}
-            className="py-3.5 rounded-2xl font-bold text-sm shadow-lg hover:brightness-110 active:scale-95 transition-all text-black"
-            style={{ backgroundColor: activeTheme.accent }}
-          >
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+       </ModalWrapper>
+    </>
+  )
 }
 
 export default App;
