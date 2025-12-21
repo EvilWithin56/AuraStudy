@@ -178,4 +178,24 @@ const App: React.FC = () => {
   // Parallax Logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+      setMousePos({ x, y });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Simple placeholder return since the full component is incomplete
+  return (
+    <div className="min-h-screen w-full bg-[#050505] text-white flex items-center justify-center">
+      <div className="text-center p-8">
+        <h1 className="text-4xl font-bold mb-4">AuraStudy</h1>
+        <p className="text-white/60 mb-2">Aesthetic Focus Clock</p>
+        <p className="text-sm text-white/40">Development environment is ready!</p>
+      </div>
+    </div>
+  );
+};
+
+export default App;
