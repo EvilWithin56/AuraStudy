@@ -8,6 +8,8 @@ A minimalist, ambient focus environment with AI-powered coaching and spatial sou
 
 View your app in AI Studio: https://ai.studio/apps/drive/1ruBByjq3acXC-PBcExa3GTbLZnRS0eGU
 
+> **🚀 New to the project?** Check out the [Quick Start Guide](QUICKSTART.md) to get up and running in 3 minutes!
+
 ## ✨ Features
 
 - 🎯 Pomodoro timer with customizable intervals
