@@ -1,8 +1,7 @@
-
 import { TimerMode } from './types';
 
 export const TIMER_SETTINGS = {
-  [TimerMode.POMODORO]: 25 * 60,
+  [TimerMode.POMODORO]: 1 * 60,
   [TimerMode.SHORT_BREAK]: 5 * 60,
   [TimerMode.LONG_BREAK]: 15 * 60,
   [TimerMode.STOPWATCH]: 0,
