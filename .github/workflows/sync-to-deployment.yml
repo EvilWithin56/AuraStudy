@@ -9,8 +9,6 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout source repository
         uses: actions/checkout@v4
@@ -27,7 +25,12 @@ jobs:
       - name: Sync files to deployment repository
         run: |
           # Sync all files from source to deployment, deleting files that no longer exist
-          rsync -av --delete --exclude='.git' source/ deployment/
+          # Exclude sensitive files and git directory
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.env*' \
+            --exclude='*.local' \
+            source/ deployment/
 
       - name: Commit and push changes
         run: |
@@ -43,5 +46,8 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Sync from AuraStudy - ${{ github.sha }}"
-            git push
+            if ! git push; then
+              echo "::error::Failed to push changes to deployment repository. Please check the DEPLOYMENT_PAT secret has correct permissions."
+              exit 1
+            fi
           fi
